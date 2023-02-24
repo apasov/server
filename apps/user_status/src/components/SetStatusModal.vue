@@ -24,6 +24,25 @@
 		:title="$t('user_status', 'Set status')"
 		@close="closeModal">
 		<div class="set-status-modal">
+			<!-- Automatic status -->
+			<template v-if="messageId">
+				<div class="set-status-modal__header">
+					<h2>{{ $t('user_status', 'Automated status') }}</h2>
+				</div>
+				<div class="set-status-modal__online-status">
+					{{ $t('user_status', 'Your user status was set automatically') }}
+				</div>
+				<div class="status-buttons">
+					<NcButton :wide="true"
+						type="secondary"
+						:text="resetButtonText"
+						:disabled="isSavingStatus"
+						@click="revertBackupFromServer">
+						{{ resetButtonText }}
+					</NcButton>
+				</div>
+			</template>
+
 			<!-- Status selector -->
 			<div class="set-status-modal__header">
 				<h2>{{ $t('user_status', 'Online status') }}</h2>
@@ -98,21 +117,53 @@ export default {
 	data() {
 		return {
 			clearAt: null,
-			icon: null,
-			message: '',
-			messageId: '',
 			isSavingStatus: false,
 			statuses: getAllStatusOptions(),
 		}
+	},
+
+	computed: {
+		messageId() {
+			return this.$store.state.userStatus.messageId
+		},
+		icon() {
+			return this.$store.state.userStatus.icon
+		},
+		message() {
+			return this.$store.state.userStatus.message || ''
+		},
+		backupIcon() {
+			return this.$store.state.userBackupStatus.icon
+		},
+		backupMessage() {
+			return this.$store.state.userBackupStatus.message
+		},
+
+		resetButtonText() {
+			if (this.backupIcon && this.backupMessage) {
+				return this.$t('user_status', 'Reset status to "{icon} {message}"', {
+					icon: this.backupIcon,
+					message: this.backupMessage,
+				})
+			} else if (this.backupMessage) {
+				return this.$t('user_status', 'Reset status to "{message}"', {
+					message: this.backupMessage,
+				})
+			} else if (this.backupIcon) {
+				return this.$t('user_status', 'Reset status to "{icon}"', {
+					icon: this.backupIcon,
+				})
+			}
+
+			return this.$t('user_status', 'Reset status')
+		},
 	},
 
 	/**
 	 * Loads the current status when a user opens dialog
 	 */
 	mounted() {
-		this.messageId = this.$store.state.userStatus.messageId
-		this.icon = this.$store.state.userStatus.icon
-		this.message = this.$store.state.userStatus.message || ''
+		this.$store.dispatch('fetchBackupFromServer')
 
 		if (this.$store.state.userStatus.clearAt !== null) {
 			this.clearAt = {
@@ -214,6 +265,27 @@ export default {
 				await this.$store.dispatch('clearMessage')
 			} catch (err) {
 				showError(this.$t('user_status', 'There was an error clearing the status'))
+				console.debug(err)
+				this.isSavingStatus = false
+				return
+			}
+
+			this.isSavingStatus = false
+			this.closeModal()
+		},
+		/**
+		 *
+		 * @return {Promise<void>}
+		 */
+		async revertBackupFromServer() {
+			try {
+				this.isSavingStatus = true
+
+				await this.$store.dispatch('revertBackupFromServer', {
+					messageId: this.messageId,
+				})
+			} catch (err) {
+				showError(this.$t('user_status', 'There was an error reverting the status'))
 				console.debug(err)
 				this.isSavingStatus = false
 				return

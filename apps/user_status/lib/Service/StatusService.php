@@ -496,7 +496,7 @@ class StatusService {
 		}
 	}
 
-	public function revertUserStatus(string $userId, string $messageId): ?UserStatus {
+	public function revertUserStatus(string $userId, string $messageId, bool $revertedManually = false): ?UserStatus {
 		try {
 			/** @var UserStatus $userStatus */
 			$backupUserStatus = $this->mapper->findByUserId($userId, true);
@@ -509,6 +509,11 @@ class StatusService {
 		if (!$deleted) {
 			// Another status is set automatically or no status, do nothing
 			return null;
+		}
+
+		if ($revertedManually && $backupUserStatus->getStatus() === IUserStatus::OFFLINE) {
+			// When the user reverts the status manually they are online
+			$backupUserStatus->setStatus(IUserStatus::ONLINE);
 		}
 
 		$backupUserStatus->setIsBackup(false);

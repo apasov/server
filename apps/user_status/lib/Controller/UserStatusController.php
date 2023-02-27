@@ -190,7 +190,7 @@ class UserStatusController extends OCSController {
 	 * @return DataResponse
 	 */
 	public function revertStatus(string $messageId): DataResponse {
-		$backupStatus = $this->service->revertUserStatus($this->userId, $messageId);
+		$backupStatus = $this->service->revertUserStatus($this->userId, $messageId, true);
 		if ($backupStatus) {
 			return new DataResponse($this->formatStatus($backupStatus));
 		}
